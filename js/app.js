@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const config = window.FANQIE_CONFIG || {};
+    const dataRoot = config.dataRoot || 'data/male';
+    const snapshotPrefix = config.snapshotPrefix || 'fanqie_male_new_ranks_';
     const categoryList = document.getElementById('category-list');
     const waterfall = document.getElementById('books-waterfall');
     const updateDate = document.getElementById('update-date');
@@ -170,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ========== Load dates index, then load latest ==========
-    fetch(`data/dates.json?${cacheBuster}`)
+    fetch(`${dataRoot}/dates.json?${cacheBuster}`)
         .then(r => r.ok ? r.json() : Promise.reject('No dates.json'))
         .then(idx => {
             availableDates = idx.dates || [];
@@ -189,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
     function loadLatestData() {
-        return fetch(`data/latest_ranks.json?${cacheBuster}`)
+        return fetch(`${dataRoot}/latest_ranks.json?${cacheBuster}`)
             .then(r => {
                 if (!r.ok) throw new Error('Network error');
                 return r.json();
@@ -214,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadDateData(dateStr) {
-        // dateStr = "YYYY-MM-DD", file = fanqie_female_new_ranks_YYYYMMDD.json
+        // dateStr = "YYYY-MM-DD", file = fanqie_<channel>_new_ranks_YYYYMMDD.json
         const fileDateStr = dateStr.replace(/-/g, '');
         const isLatest = currentDateIndex === availableDates.length - 1;
 
@@ -227,8 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show loading state
         waterfall.innerHTML = '<p style="color:var(--text-muted);padding:20px;">加载中...</p>';
 
-        const snapshotUrl = `data/fanqie_female_new_ranks_${fileDateStr}.json?${cacheBuster}`;
-        const trendUrl = `data/trends/${dateStr}.json?${cacheBuster}`;
+        const snapshotUrl = `${dataRoot}/${snapshotPrefix}${fileDateStr}.json?${cacheBuster}`;
+        const trendUrl = `${dataRoot}/trends/${dateStr}.json?${cacheBuster}`;
 
         // Load snapshot + trends in parallel
         Promise.all([

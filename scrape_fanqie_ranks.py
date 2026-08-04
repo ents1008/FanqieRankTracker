@@ -24,13 +24,38 @@ def decode_text(text: str) -> str:
 
 # 我们将直接从页面解析所有新书榜类别目录，实现动态抓取
 
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CHANNEL_PROFILES = {
+    "male": {
+        "label": "男频",
+        "init_url": "https://fanqienovel.com/rank/1_1_1141",
+        "route_prefix": "/rank/1_1_",
+    },
+    "female": {
+        "label": "女频",
+        "init_url": "https://fanqienovel.com/rank/0_1_1139",
+        "route_prefix": "/rank/0_1_",
+    },
+}
 
-def run_scraper(limit=30, sleep_sec=5):
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+def get_channel_profile(channel=None):
+    channel = (channel or os.environ.get("FANQIE_CHANNEL", "male")).strip().lower()
+    if channel not in CHANNEL_PROFILES:
+        supported = ", ".join(sorted(CHANNEL_PROFILES))
+        raise ValueError(f"不支持的频道: {channel!r}，可选值: {supported}")
+    return channel, CHANNEL_PROFILES[channel]
+
+
+def run_scraper(limit=30, sleep_sec=5, channel=None):
+    channel, profile = get_channel_profile(channel)
+    output_dir = os.path.join(BASE_DIR, "data", channel)
+    os.makedirs(output_dir, exist_ok=True)
     date_str = datetime.now().strftime("%Y%m%d")
-    output_file = os.path.join(OUTPUT_DIR, f"fanqie_female_new_ranks_{date_str}.json")
-    state_file = os.path.join(OUTPUT_DIR, f"task_state_{date_str}.json")
+    output_file = os.path.join(
+        output_dir, f"fanqie_{channel}_new_ranks_{date_str}.json"
+    )
+    state_file = os.path.join(output_dir, f"task_state_{date_str}.json")
     
     # ------------- 状态恢复逻辑 -------------
     completed_cats = []
@@ -63,24 +88,32 @@ def run_scraper(limit=30, sleep_sec=5):
         )
         page = context.new_page()
         
-        # 先访问新书榜的基准前缀页面，以此为入口模拟人工作业
-        init_url = "https://fanqienovel.com/rank/0_1_1139"
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] 正在初始化并访问基础榜单页：{init_url}")
+        # 先访问当前频道的新书榜入口，以此为入口模拟人工作业
+        init_url = profile["init_url"]
+        print(
+            f"[{datetime.now().strftime('%H:%M:%S')}] "
+            f"正在初始化并访问{profile['label']}基础榜单页：{init_url}"
+        )
         page.goto(init_url, wait_until="load", timeout=15000)
         page.wait_for_selector('a[href^="/page/"]', timeout=5000)
         
         # 动态解析页面左侧拥有的所有类别目录 (通过匹配对应的榜单路由规律)
+        route_prefix_json = json.dumps(profile["route_prefix"], ensure_ascii=False)
         categories_js = """
         () => {
             return Array.from(document.querySelectorAll('a'))
-                .filter(a => a.href.includes('/rank/0_1_'))
+                .filter(a => a.href.includes(__ROUTE_PREFIX__))
                 .map(a => ({
                     name: a.innerText.trim(),
                     href: a.getAttribute('href')
                 }));
         }
-        """
+        """.replace("__ROUTE_PREFIX__", route_prefix_json)
         categories = page.evaluate(categories_js)
+        if not categories:
+            raise RuntimeError(
+                f"未找到{profile['label']}分类，入口或页面结构可能已变化: {init_url}"
+            )
         print(f"✅ 成功自适应提取到 {len(categories)} 个分类标签。开始全量模拟点击抓取下级数据...")
         
         for cat in categories:
@@ -92,13 +125,19 @@ def run_scraper(limit=30, sleep_sec=5):
                 continue
                 
             print(f"[{datetime.now().strftime('%H:%M:%S')}] 模拟点击执行类别切换 -> {cat_name}")
+            switched = True
             try:
                 # 使用 Playwright 模拟真实的人为鼠标定位与点击跳转分类
-                page.locator(f"a[href='{cat_href}']").click()
+                page.locator(f"a[href='{cat_href}']").first.click()
                 time.sleep(2) # 等待 SPA 页面骨架和组件请求的动画渲染完毕
                 page.wait_for_selector('a[href^="/page/"]', timeout=5000)
             except Exception as e:
+                switched = False
                 print(f"切换分类出错或加载超时 {cat_name}: {e}")
+
+            if not switched:
+                print(f"⚠️ 跳过未成功切换的类别：{cat_name}，下次运行将继续重试")
+                continue
             
             # Scroll to load top ~30 books
             for _ in range(3):
@@ -241,5 +280,6 @@ def run_scraper(limit=30, sleep_sec=5):
     print(f"\n✅ 当日选定类目任务已完毕或刷新！数据源：{output_file}")
 
 if __name__ == "__main__":
-    print("开始执行番茄女频新书榜抓取计划...")
-    run_scraper(limit=30, sleep_sec=5)
+    channel, profile = get_channel_profile()
+    print(f"开始执行番茄{profile['label']}新书榜抓取计划...")
+    run_scraper(limit=30, sleep_sec=5, channel=channel)

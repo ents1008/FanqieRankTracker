@@ -2,7 +2,7 @@
 
 [![English](https://img.shields.io/badge/lang-English-blue)](README_EN.md)
 
-> 👗 专注于**番茄小说女频新书榜**，每日自动追踪排行数据并结合 AI 生成趋势分析，部署为精美的在线看板。
+> 专注于**番茄小说男频新书榜**，每日自动追踪排行数据并结合 AI 生成趋势分析，部署为精美的在线看板。
 
 ---
 
@@ -10,10 +10,10 @@
 
 | 功能 | 说明 |
 |------|------|
-| 🕷️ 自动爬取 | 每日定时抓取番茄女性频道各个分类的新书榜 Top 30 |
+| 🕷️ 自动爬取 | 每日定时抓取番茄男频各个分类的新书榜；当前页面通常返回 20 本，`limit=30` 作为上限 |
 | 📊 趋势对比 | 自动对比相邻两天数据：新上榜 / 掉榜 / 排名变化 / 阅读量增长 |
 | 🤖 AI 风向分析 | 接入 OpenAI 兼容 API，按分类生成市场趋势速评 |
-| 🧭 类型风向标 | 独立趋势页聚合多日数据，用 AI 总结古风言情等综合赛道、具体热门分类和高频题材；未配置 API 时自动规则兜底 |
+| 🧭 类型风向标 | 独立趋势页聚合多日数据，用 AI 总结玄幻仙侠、都市流派等综合赛道、具体热门分类和高频题材；未配置 API 时自动规则兜底 |
 | 🖥️ 精美看板 | 暗色编辑风格仪表盘，带打字机动画和瀑布流书籍卡片 |
 | 📱 移动适配 | 完整的移动端适配，侧边栏抽屉式菜单 |
 | 🔌 数据接口 | 生成静态 `lastest` JSON 接口，可按类型读取最新数据 |
@@ -61,13 +61,15 @@
 2. 点击右上角 **Run workflow** → **Run workflow**
 3. 等待 Workflow 运行完成（约 3–5 分钟）
 
-运行成功后，`data/` 目录下会自动生成数据文件，打开 GitHub Pages 链接即可看到看板。
+运行成功后，`data/male/` 和 `api/male/` 目录下会自动生成男频数据文件，打开 GitHub Pages 链接即可看到看板。
+
+仓库原有的女频历史快照仍保留在旧目录中作为归档；男频构建只读取 `data/male/`，不会把两种频道混入趋势比较。
 
 ### 第五步：坐等自动更新
 
 GitHub Actions 已配置为 **每天 UTC 00:00（北京时间 08:00）** 自动运行。之后无需任何手动操作，数据和看板会每天自动更新。
 
-看板右上角的 **风向标** 可进入 `trend.html`，先查看当下火热综合赛道（如古风言情）、具体热门分类和高频题材，再按具体类型查看近 7 / 14 / 30 日或全部周期的趋势分析。全站热点会优先使用 AI 总结，未配置 API 或生成失败时使用规则统计文案兜底。
+看板右上角的 **风向标** 可进入 `trend.html`，先查看当下火热综合赛道（如玄幻仙侠、都市流派）、具体热门分类和高频题材，再按具体类型查看近 7 / 14 / 30 日或全部周期的趋势分析。全站热点会优先使用 AI 总结，未配置 API 或生成失败时使用规则统计文案兜底。
 
 ---
 
@@ -77,15 +79,15 @@ GitHub Actions 已配置为 **每天 UTC 00:00（北京时间 08:00）** 自动�
 
 | 类型 | 路径 | 说明 |
 |---|---|---|
-| 类型索引 | `api/lastest.json` | 返回所有可用类型及对应 URL |
-| 全量数据 | `api/lastest/all.json` | `type=all`，返回全部分类、趋势和书籍 |
-| 单类型数据 | `api/lastest/<类型>.json` | 返回指定类型的数据，例如 `api/lastest/古风世情.json` |
+| 类型索引 | `api/male/lastest.json` | 返回男频所有可用类型及对应 URL |
+| 全量数据 | `api/male/lastest/all.json` | `type=all`，返回男频全部分类、趋势和书籍 |
+| 单类型数据 | `api/male/lastest/<类型>.json` | 返回指定类型的数据，例如 `api/male/lastest/东方仙侠.json` |
 
 示例：
 
 ```bash
-curl https://<你的用户名>.github.io/FanqieRankTracker/api/lastest/all.json
-curl https://<你的用户名>.github.io/FanqieRankTracker/api/lastest/古风世情.json
+curl https://<你的用户名>.github.io/FanqieRankTracker/api/male/lastest/all.json
+curl https://<你的用户名>.github.io/FanqieRankTracker/api/male/lastest/东方仙侠.json
 ```
 
 ---
@@ -105,7 +107,10 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 playwright install chromium
 
-# 4. 运行爬虫（每个分类抓取 Top 30）
+# 4. 运行男频爬虫（每个分类最多抓取 30 本）
+# PowerShell: $env:FANQIE_CHANNEL="male"
+# cmd: set FANQIE_CHANNEL=male
+# bash: export FANQIE_CHANNEL=male
 python scrape_fanqie_ranks.py
 
 # 5. 构建看板数据（可选，带 AI 分析需设置环境变量）
@@ -113,7 +118,7 @@ pip install openai
 export API_BASE_URL="https://your-api-endpoint/v1"
 export API_KEY="your-api-key"
 export API_MODEL="your-model-name"
-python scripts/build_latest.py
+python scripts/build_latest.py --channel male
 
 # 6. 本地预览前端
 python -m http.server 8000
@@ -131,17 +136,19 @@ FanqieRankTracker/
 ├── css/
 │   └── style.css               # 暗色编辑风格主题样式
 ├── js/
+│   ├── config.js               # 男频数据路径、赛道和题材配置
 │   └── app.js                  # 前端渲染逻辑（瀑布流 + 打字机动画）
 ├── scripts/
 │   └── build_latest.py         # 趋势对比 + AI 分析构建脚本
 ├── data/
-│   ├── fanqie_female_new_ranks_YYYYMMDD.json  # 每日原始快照
-│   ├── latest_ranks.json       # 最新聚合数据（看板数据源）
-│   ├── market_summary.json     # 全站热点 AI/规则总结
-│   └── trends/
-│       └── YYYY-MM-DD.json     # 趋势归档
+│   └── male/
+│       ├── fanqie_male_new_ranks_YYYYMMDD.json  # 每日男频原始快照
+│       ├── latest_ranks.json       # 最新聚合数据（看板数据源）
+│       ├── market_summary.json     # 全站热点 AI/规则总结
+│       └── trends/
+│           └── YYYY-MM-DD.json     # 趋势归档
 ├── api/
-│   └── lastest/                # 最新数据静态接口（all + 按类型拆分）
+│   └── male/lastest/           # 男频最新数据静态接口
 ├── index.html                  # 仪表盘入口页
 ├── trend.html                  # 类型风向标趋势分析页
 ├── scrape_fanqie_ranks.py      # 番茄小说爬虫（Playwright）
@@ -193,7 +200,7 @@ FanqieRankTracker/
 <details>
 <summary><b>Q: 可以换成男频或其他榜单吗？</b></summary>
 
-可以，修改 `scrape_fanqie_ranks.py` 中的 `init_url` 变量，将 URL 改为目标榜单的地址即可。
+当前部署默认是男频。抓取器和构建器都支持 `FANQIE_CHANNEL=male|female`；切换频道时必须使用对应的入口和独立数据目录，不能只替换 URL 的首位数字。
 
 </details>
 

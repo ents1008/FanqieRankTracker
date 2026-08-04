@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const config = window.FANQIE_CONFIG || {};
+    const dataRoot = config.dataRoot || 'data/male';
+    const snapshotPrefix = config.snapshotPrefix || 'fanqie_male_new_ranks_';
     const detail = document.getElementById('book-detail');
     const cacheBuster = `v=${Math.floor(Date.now() / 600000)}`;
     const maxDays = 30;
@@ -20,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const dateIndex = await fetchJson(`data/dates.json?${cacheBuster}`);
+            const dateIndex = await fetchJson(`${dataRoot}/dates.json?${cacheBuster}`);
             const dates = (dateIndex.dates || []).slice().sort().slice(-maxDays);
             const snapshots = await Promise.all(
                 dates.map(date => fetchJson(`${snapshotUrl(date)}?${cacheBuster}`).catch(() => null))
@@ -40,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function snapshotUrl(date) {
-        return `data/fanqie_female_new_ranks_${date.replace(/-/g, '')}.json`;
+        return `${dataRoot}/${snapshotPrefix}${date.replace(/-/g, '')}.json`;
     }
 
     function fetchJson(url) {

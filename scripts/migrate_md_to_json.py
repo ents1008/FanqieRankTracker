@@ -6,6 +6,13 @@ import os
 import re
 import json
 import glob
+import argparse
+
+
+CHANNEL_PREFIXES = {
+    "male": "fanqie_male_new_ranks_",
+    "female": "fanqie_female_new_ranks_",
+}
 
 
 def parse_md_to_json(md_path: str) -> dict:
@@ -74,9 +81,24 @@ def parse_md_to_json(md_path: str) -> dict:
 
 
 def main():
+    parser = argparse.ArgumentParser(description="迁移指定频道的 Markdown 榜单快照")
+    parser.add_argument(
+        "--channel",
+        choices=sorted(CHANNEL_PREFIXES),
+        default=os.environ.get("FANQIE_CHANNEL", "male"),
+        help="榜单频道，默认 male；也可通过 FANQIE_CHANNEL 设置",
+    )
+    args = parser.parse_args()
+
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    data_dir = os.path.join(base_dir, "data")
-    md_files = sorted(glob.glob(os.path.join(data_dir, "fanqie_female_new_ranks_*.md")))
+    data_dir = os.path.join(base_dir, "data", args.channel)
+    os.makedirs(data_dir, exist_ok=True)
+    prefix = CHANNEL_PREFIXES[args.channel]
+    md_files = sorted(glob.glob(os.path.join(data_dir, f"{prefix}*.md")))
+
+    # 兼容旧版女频仓库把 Markdown 快照直接放在 data/ 根目录的布局。
+    if not md_files and args.channel == "female":
+        md_files = sorted(glob.glob(os.path.join(base_dir, "data", f"{prefix}*.md")))
 
     if not md_files:
         print("未找到任何 Markdown 文件。")

@@ -6,7 +6,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: fanqie-rank-writes-main
+  group: fanqie-male-rank-writes-main
   cancel-in-progress: false
 
 on:
@@ -77,10 +77,12 @@ jobs:
       run: python scrape_fanqie_ranks.py
       env:
         GITHUB_ACTIONS: true
+        FANQIE_CHANNEL: male
 
     - name: Build Latest Data with AI Summary (Force)
       run: pip install openai && python scripts/build_latest.py --force --date ${{ steps.date.outputs.dash_date }}
       env:
+        FANQIE_CHANNEL: male
         API_BASE_URL: ${{ secrets.API_BASE_URL }}
         API_KEY: ${{ secrets.API_KEY }}
         API_MODEL: ${{ secrets.API_MODEL }}
@@ -91,8 +93,8 @@ jobs:
     - name: Commit and Push Changes
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        commit_message: "[Force] Re-summarize Fanqie ranks (${{ steps.date.outputs.dash_date }})"
-        file_pattern: data/*
+        commit_message: "[Force] Re-summarize Fanqie male ranks (${{ steps.date.outputs.dash_date }})"
+        file_pattern: data api
         branch: main
 
     # ---- Deploy to GitHub Pages ----

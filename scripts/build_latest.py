@@ -14,6 +14,82 @@ import argparse
 from urllib.parse import quote
 
 
+CHANNEL_PROFILES = {
+    "male": {
+        "label": "男频",
+        "snapshot_prefix": "fanqie_male_new_ranks_",
+        "genre_groups": [
+            {"name": "玄幻仙侠", "categories": ["传统玄幻", "玄幻脑洞", "东方仙侠", "西方奇幻"]},
+            {"name": "都市流派", "categories": ["都市日常", "都市脑洞", "都市修真", "都市高武", "战神赘婿", "都市种田"]},
+            {"name": "历史战争", "categories": ["历史古代", "历史脑洞", "抗战谍战"]},
+            {"name": "科幻悬疑", "categories": ["科幻末世", "悬疑脑洞", "悬疑灵异"]},
+            {"name": "衍生游戏", "categories": ["动漫衍生", "男频衍生", "游戏体育"]},
+        ],
+        "market_keywords": [
+            "重生", "穿越", "系统", "无敌", "升级", "逆袭", "召唤", "诸天", "万界", "宗门",
+            "师徒", "灵气复苏", "末世", "废土", "异能", "诡异", "规则怪谈", "国运", "星际", "修仙",
+            "仙侠", "玄幻", "高武", "武道", "灵兽", "御兽", "领主", "争霸", "种田", "基建",
+            "无限流", "悬疑", "推理", "直播", "游戏", "电竞", "娱乐圈", "历史", "抗战", "三国",
+            "大秦", "官场", "兵王", "神豪", "赘婿", "校花", "都市", "无女主", "单女主", "多女主",
+            "热血", "爽文",
+        ],
+        "topic_examples": "升级/系统/宗门/无敌/诸天/末世等",
+        "reader_examples": "爽文/热血/升级/脑洞/权谋等",
+    },
+    "female": {
+        "label": "女频",
+        "snapshot_prefix": "fanqie_female_new_ranks_",
+        "genre_groups": [
+            {"name": "古风言情", "categories": ["古风世情", "古言脑洞", "宫斗宅斗", "种田"]},
+            {"name": "现代言情", "categories": ["现言脑洞", "豪门总裁", "职场婚恋", "青春甜宠"]},
+            {"name": "幻想言情", "categories": ["玄幻言情", "科幻末世", "悬疑脑洞", "女频悬疑"]},
+            {"name": "快穿衍生", "categories": ["快穿", "女频衍生"]},
+            {"name": "年代民国", "categories": ["年代", "民国言情"]},
+            {"name": "娱乐星光", "categories": ["星光璀璨"]},
+            {"name": "游戏体育", "categories": ["游戏体育"]},
+        ],
+        "market_keywords": [
+            "重生", "穿书", "快穿", "系统", "空间", "团宠", "萌宝", "幼崽", "女配", "炮灰",
+            "反派", "权臣", "宅斗", "宫斗", "和离", "替嫁", "逃荒", "种田", "美食", "经商",
+            "年代", "七零", "八零", "军婚", "豪门", "总裁", "真假千金", "先婚后爱", "追妻",
+            "甜宠", "双洁", "强制爱", "无CP", "末世", "废土", "天灾", "囤货", "异能",
+            "国运", "星际", "修仙", "玄学", "无限流", "悬疑", "直播", "综艺", "娱乐圈",
+            "校园", "暗恋", "青梅竹马", "民国", "兽世", "远古", "基建",
+        ],
+        "topic_examples": "穿书/重生/系统/种田等",
+        "reader_examples": "甜宠/虐/爽/日常/暗黑等",
+    },
+}
+
+CHANNEL = ""
+CHANNEL_PROFILE = {}
+GENRE_GROUPS = []
+MARKET_KEYWORDS = []
+
+
+def configure_channel(channel=None):
+    """选择频道并刷新本模块使用的题材配置。"""
+    global CHANNEL, CHANNEL_PROFILE, GENRE_GROUPS, MARKET_KEYWORDS
+    channel = (channel or os.environ.get("FANQIE_CHANNEL", "male")).strip().lower()
+    if channel not in CHANNEL_PROFILES:
+        supported = ", ".join(sorted(CHANNEL_PROFILES))
+        raise ValueError(f"不支持的频道: {channel!r}，可选值: {supported}")
+    CHANNEL = channel
+    CHANNEL_PROFILE = CHANNEL_PROFILES[channel]
+    GENRE_GROUPS = CHANNEL_PROFILE["genre_groups"]
+    MARKET_KEYWORDS = CHANNEL_PROFILE["market_keywords"]
+    return CHANNEL, CHANNEL_PROFILE
+
+
+def channel_data_dir(base_dir: str, channel=None) -> str:
+    """返回频道独立的数据目录，避免女频和男频趋势互相污染。"""
+    channel = channel or CHANNEL
+    return os.path.join(base_dir, "data", channel)
+
+
+configure_channel()
+
+
 def parse_reads(reads_str: str) -> float:
     """将 '15.2万' 这样的字符串转为数值，用于比较。"""
     if not reads_str or reads_str == "未知":
@@ -186,7 +262,7 @@ def build_ai_prompt(cat_name: str, cat: dict, trend: dict) -> str:
     fallers = trend.get("top_fallers", [])
     fallers_text = "、".join(f"《{f['title']}》{f['change']}" for f in fallers) if fallers else "无"
 
-    return f"""你是一位网文行业分析师。请根据以下数据，为番茄小说「{cat_name}」分类新书榜生成结构化分析。
+    return f"""你是一位网文行业分析师。请根据以下数据，为番茄小说{CHANNEL_PROFILE['label']}「{cat_name}」分类新书榜生成结构化分析。
 
 ## 当前榜单 Top 20
 {intros_text}
@@ -200,10 +276,10 @@ def build_ai_prompt(cat_name: str, cat: dict, trend: dict) -> str:
 ## 输出要求（请严格按以下格式输出，使用 Markdown）
 
 **🔥 题材趋势**
-用1-2句话总结当前分类的主流题材和高频元素（如穿书/重生/系统/种田等），点明哪些设定扎堆出现。
+用1-2句话总结当前分类的主流题材和高频元素（如{CHANNEL_PROFILE['topic_examples']}），点明哪些设定扎堆出现。
 
 **📖 读者偏好**
-用1句话概括读者口味方向（甜宠/虐/爽/日常/暗黑等），以及金手指类型偏好。
+用1句话概括读者口味方向（{CHANNEL_PROFILE['reader_examples']}），以及金手指类型偏好。
 
 **🆕 新上榜作品**
 列出新上榜书名，每本用一句话点评其题材亮点或差异化卖点。
@@ -220,26 +296,6 @@ def build_ai_prompt(cat_name: str, cat: dict, trend: dict) -> str:
 BATCH_SIZE = 3  # 每批合并的分类数
 
 MARKET_PERIODS = [("7", 7), ("14", 14), ("30", 30), ("all", None)]
-
-GENRE_GROUPS = [
-    {"name": "古风言情", "categories": ["古风世情", "古言脑洞", "宫斗宅斗", "种田"]},
-    {"name": "现代言情", "categories": ["现言脑洞", "豪门总裁", "职场婚恋", "青春甜宠"]},
-    {"name": "幻想言情", "categories": ["玄幻言情", "科幻末世", "悬疑脑洞", "女频悬疑"]},
-    {"name": "快穿衍生", "categories": ["快穿", "女频衍生"]},
-    {"name": "年代民国", "categories": ["年代", "民国言情"]},
-    {"name": "娱乐星光", "categories": ["星光璀璨"]},
-    {"name": "游戏体育", "categories": ["游戏体育"]},
-]
-
-MARKET_KEYWORDS = [
-    "重生", "穿书", "快穿", "系统", "空间", "团宠", "萌宝", "幼崽", "女配", "炮灰",
-    "反派", "权臣", "宅斗", "宫斗", "和离", "替嫁", "逃荒", "种田", "美食", "经商",
-    "年代", "七零", "八零", "军婚", "豪门", "总裁", "真假千金", "先婚后爱", "追妻",
-    "甜宠", "双洁", "强制爱", "无CP", "末世", "废土", "天灾", "囤货", "异能",
-    "国运", "星际", "修仙", "玄学", "无限流", "悬疑", "直播", "综艺", "娱乐圈",
-    "校园", "暗恋", "青梅竹马", "民国", "兽世", "远古", "基建",
-]
-
 
 def build_batch_ai_prompt(batch: list) -> str:
     """构建批量 AI 总结的 prompt。
@@ -365,15 +421,16 @@ def write_json(path: str, payload: dict):
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
 
-def build_lastest_api(output: dict, base_dir: str):
+def build_lastest_api(output: dict, base_dir: str, channel=None):
     """生成静态 lastest 数据接口。
 
     GitHub Pages 不支持动态 query API，因此这里将 type 参数映射为静态文件：
-    - api/lastest/all.json：全量数据
-    - api/lastest/<type>.json：单个类型数据
-    - api/lastest.json / api/lastest/index.json：类型索引
+    - api/<channel>/lastest/all.json：全量数据
+    - api/<channel>/lastest/<type>.json：单个类型数据
+    - api/<channel>/lastest.json / api/<channel>/lastest/index.json：类型索引
     """
-    api_root = os.path.join(base_dir, "api")
+    channel = channel or CHANNEL
+    api_root = os.path.join(base_dir, "api", channel)
     lastest_dir = os.path.join(api_root, "lastest")
     os.makedirs(lastest_dir, exist_ok=True)
     for old_path in glob.glob(os.path.join(lastest_dir, "*.json")):
@@ -393,7 +450,7 @@ def build_lastest_api(output: dict, base_dir: str):
 
     types = [{
         "type": "all",
-        "url": "api/lastest/all.json",
+        "url": f"api/{channel}/lastest/all.json",
         "category_count": len(categories),
         "book_count": sum(len(cat.get("books", [])) for cat in categories),
     }]
@@ -418,7 +475,7 @@ def build_lastest_api(output: dict, base_dir: str):
         }
         write_json(os.path.join(lastest_dir, f"{filename}.json"), payload)
 
-        url = f"api/lastest/{quote(filename)}.json"
+        url = f"api/{channel}/lastest/{quote(filename)}.json"
         types.append({
             "type": type_name,
             "url": url,
@@ -711,7 +768,7 @@ def build_market_ai_prompt(payload: dict) -> str:
             f"- 规则兜底: {data['fallback_summary']}"
         )
 
-    return f"""你是一位网文市场编辑，请根据番茄女频新书榜的统计结果，为每个周期生成一段全站热点判断。
+    return f"""你是一位网文市场编辑，请根据番茄{CHANNEL_PROFILE['label']}新书榜的统计结果，为每个周期生成一段全站热点判断。
 
 {chr(10).join(sections)}
 
@@ -947,20 +1004,28 @@ def generate_ai_summaries(categories: list, trends: dict,
 
 def main():
     parser = argparse.ArgumentParser(description="构建 latest_ranks.json")
+    parser.add_argument(
+        "--channel",
+        choices=sorted(CHANNEL_PROFILES),
+        default=os.environ.get("FANQIE_CHANNEL", "male"),
+        help="榜单频道，默认 male；也可通过 FANQIE_CHANNEL 设置",
+    )
     parser.add_argument("--force", action="store_true",
                         help="强制重新生成所有 AI 总结，忽略已有总结")
     parser.add_argument("--date", type=str, default="",
                         help="指定目标日期 (YYYY-MM-DD)，默认使用最新快照")
     args = parser.parse_args()
+    channel, profile = configure_channel(args.channel)
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    data_dir = os.path.join(base_dir, "data")
+    data_dir = channel_data_dir(base_dir, channel)
     trends_dir = os.path.join(data_dir, "trends")
+    os.makedirs(data_dir, exist_ok=True)
     os.makedirs(trends_dir, exist_ok=True)
 
     # 查找 JSON 快照文件
     snapshots = sorted(
-        glob.glob(os.path.join(data_dir, "fanqie_female_new_ranks_*.json"))
+        glob.glob(os.path.join(data_dir, f"{profile['snapshot_prefix']}*.json"))
     )
 
     if not snapshots:
@@ -971,7 +1036,7 @@ def main():
     if args.date:
         target_date_compact = args.date.replace("-", "")
         target_path = os.path.join(
-            data_dir, f"fanqie_female_new_ranks_{target_date_compact}.json"
+            data_dir, f"{profile['snapshot_prefix']}{target_date_compact}.json"
         )
         if not os.path.exists(target_path):
             print(f"❌ 未找到 {args.date} 的快照文件: {target_path}")
@@ -984,7 +1049,10 @@ def main():
         target_idx = len(snapshots) - 1
 
     latest_data = load_snapshot(latest_path)
-    print(f"目标快照: {os.path.basename(latest_path)} ({latest_data['date']})")
+    print(
+        f"{profile['label']}目标快照: "
+        f"{os.path.basename(latest_path)} ({latest_data['date']})"
+    )
 
     # 加载前一天的快照（如果有）
     prev_data = None
@@ -1084,8 +1152,8 @@ def main():
         json.dump(output, f, ensure_ascii=False, indent=2)
     print(f"\n✅ 已生成: {out_path}")
 
-    # 生成静态 API 文件：api/lastest/all.json + api/lastest/<type>.json
-    api_dir = build_lastest_api(output, base_dir)
+    # 生成频道独立的静态 API 文件：api/<channel>/lastest/...
+    api_dir = build_lastest_api(output, base_dir, channel=channel)
     print(f"✅ Lastest API: {api_dir}")
 
     # 写入 trends/YYYY-MM-DD.json
@@ -1112,7 +1180,7 @@ def main():
     date_list = []
     for s in snapshots:
         fname = os.path.basename(s)
-        # fanqie_female_new_ranks_YYYYMMDD.json -> YYYY-MM-DD
+        # fanqie_<channel>_new_ranks_YYYYMMDD.json -> YYYY-MM-DD
         m = re.search(r"(\d{4})(\d{2})(\d{2})", fname)
         if m:
             date_list.append(f"{m.group(1)}-{m.group(2)}-{m.group(3)}")

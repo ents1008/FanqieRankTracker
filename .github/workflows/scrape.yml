@@ -6,7 +6,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: fanqie-rank-writes-main
+  group: fanqie-male-rank-writes-main
   cancel-in-progress: false
 
 on:
@@ -37,7 +37,7 @@ jobs:
       id: check_data
       run: |
         TODAY=$(date -u +"%Y%m%d")
-        FILE="data/fanqie_female_new_ranks_${TODAY}.json"
+        FILE="data/male/fanqie_male_new_ranks_${TODAY}.json"
         if [ -f "$FILE" ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
           echo "✅ 今日数据已存在: $FILE，跳过爬取"
@@ -65,10 +65,12 @@ jobs:
       run: python scrape_fanqie_ranks.py
       env:
         GITHUB_ACTIONS: true
+        FANQIE_CHANNEL: male
 
     - name: Build Latest Data with AI Summary
       run: pip install openai && python scripts/build_latest.py
       env:
+        FANQIE_CHANNEL: male
         API_BASE_URL: ${{ secrets.API_BASE_URL }}
         API_KEY: ${{ secrets.API_KEY }}
         API_MODEL: ${{ secrets.API_MODEL }}
@@ -79,7 +81,7 @@ jobs:
     - name: Commit and Push Changes
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        commit_message: "[Auto] Update Fanqie daily ranks"
+        commit_message: "[Auto] Update Fanqie male ranks"
         file_pattern: data api
         branch: main
 

@@ -2,7 +2,7 @@
 
 [![中文](https://img.shields.io/badge/lang-中文-red)](README.md)
 
-> 👗 Focused exclusively on **Fanqie Novel's Female Category (女频)**, featuring daily automated tracking of new book rankings and AI-powered trend analysis, deployed as a premium online dashboard.
+> Focused exclusively on **Fanqie Novel's Male Category (男频)**, featuring daily automated tracking of new book rankings and AI-powered trend analysis, deployed as a premium online dashboard.
 
 ---
 
@@ -10,7 +10,7 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🕷️ Auto Scraping | Daily automated scraping of Top 30 new books across all sub-categories within Fanqie's Female section |
+| 🕷️ Auto Scraping | Daily automated scraping of male-category new-book rankings; the current page usually returns 20 books, with `limit=30` as the ceiling |
 | 📊 Trend Analysis | Automatic day-over-day comparison: new entries / dropped / rank changes / readership growth |
 | 🤖 AI Summary | OpenAI-compatible API integration for per-category market trend analysis |
 | 🖥️ Dashboard | Dark editorial-style dashboard with typewriter animation and waterfall book cards |
@@ -59,7 +59,9 @@ Go to repo → **Settings** → **Secrets and variables** → **Actions** → **
 2. Click **Run workflow** → **Run workflow** on the top-right
 3. Wait for the workflow to complete (~3–5 minutes)
 
-After a successful run, data files will be generated in the `data/` directory. Open the GitHub Pages link to view your dashboard.
+After a successful run, male data files will be generated in `data/male/` and `api/male/`. Open the GitHub Pages link to view your dashboard.
+
+The repository's original female snapshots remain as an archive in the legacy directory. Male builds read only `data/male/`, so the two channels are not mixed in trend comparisons.
 
 ### Step 5: Sit Back and Relax
 
@@ -82,7 +84,8 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 playwright install chromium
 
-# 4. Run the scraper (Top 30 per category)
+# 4. Run the male scraper (up to 30 per category)
+export FANQIE_CHANNEL="male"
 python scrape_fanqie_ranks.py
 
 # 5. Build dashboard data (optional, set env vars for AI analysis)
@@ -90,7 +93,7 @@ pip install openai
 export API_BASE_URL="https://your-api-endpoint/v1"
 export API_KEY="your-api-key"
 export API_MODEL="your-model-name"
-python scripts/build_latest.py
+python scripts/build_latest.py --channel male
 
 # 6. Preview frontend locally
 python -m http.server 8000
@@ -108,14 +111,16 @@ FanqieRankTracker/
 ├── css/
 │   └── style.css               # Dark editorial theme styles
 ├── js/
+│   ├── config.js               # Male data paths, genre groups and theme keywords
 │   └── app.js                  # Frontend rendering (waterfall + typewriter animation)
 ├── scripts/
 │   └── build_latest.py         # Trend comparison + AI analysis build script
 ├── data/
-│   ├── fanqie_female_new_ranks_YYYYMMDD.json  # Daily raw snapshots
-│   ├── latest_ranks.json       # Latest aggregated data (dashboard source)
-│   └── trends/
-│       └── YYYY-MM-DD.json     # Trend archives
+│   └── male/
+│       ├── fanqie_male_new_ranks_YYYYMMDD.json  # Daily male snapshots
+│       ├── latest_ranks.json       # Latest aggregated data (dashboard source)
+│       └── trends/
+│           └── YYYY-MM-DD.json     # Trend archives
 ├── index.html                  # Dashboard entry page
 ├── scrape_fanqie_ranks.py      # Fanqie Novel scraper (Playwright)
 ├── requirements.txt            # Python dependencies
@@ -164,9 +169,9 @@ Yes! The system will automatically fall back to rule-based summaries (e.g., "3 n
 </details>
 
 <details>
-<summary><b>Q: Can I track other rankings (e.g., male-oriented)?</b></summary>
+<summary><b>Q: Can I switch the ranking channel?</b></summary>
 
-Yes, modify the `init_url` variable in `scrape_fanqie_ranks.py` to point to the desired ranking page URL.
+The deployed default is male. Both scraper and builder support `FANQIE_CHANNEL=male|female`; switch the matching entry URL and isolated data directory together rather than changing only one URL segment.
 
 </details>
 
