@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const dateInput = document.getElementById('date-input');
     const datePrevBtn = document.getElementById('date-prev');
     const dateNextBtn = document.getElementById('date-next');
+    const taskCopyCount = document.getElementById('task-copy-count');
+    const taskCopyBtn = document.getElementById('task-copy-btn');
 
     let allData = null;
     let typingTimer = null;
@@ -29,21 +31,54 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyToast = document.createElement('div');
     copyToast.className = 'copy-toast';
     copyToast.textContent = '书本信息已复制';
+    copyToast.setAttribute('role', 'status');
+    copyToast.setAttribute('aria-live', 'polite');
     document.body.appendChild(copyToast);
     let toastTimer = null;
 
     function showCopyToast() {
+        copyToast.textContent = '书本信息已复制';
         if (toastTimer) clearTimeout(toastTimer);
         copyToast.classList.add('show');
         toastTimer = setTimeout(() => copyToast.classList.remove('show'), 1800);
     }
 
+    function fallbackCopyText(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+
+        try {
+            if (!document.execCommand('copy')) {
+                throw new Error('Copy command was rejected');
+            }
+            return Promise.resolve();
+        } catch (error) {
+            return Promise.reject(error);
+        } finally {
+            document.body.removeChild(ta);
+        }
+    }
+
+    function writeClipboard(text) {
+        if (window.isSecureContext && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            return navigator.clipboard.writeText(text).catch(() => fallbackCopyText(text));
+        }
+        return fallbackCopyText(text);
+    }
+
     function copyBookInfo(e, book) {
         e.preventDefault();
         e.stopPropagation();
+        const btn = e.currentTarget;
         const text = `${book.title}\n作者：${book.author}\n阅读量：${book.reads}\n简介：${book.intro || '无'}\n链接：${book.url || '无'}`;
-        navigator.clipboard.writeText(text).then(() => {
-            const btn = e.currentTarget;
+        writeClipboard(text).then(() => {
             btn.classList.add('copied');
             btn.textContent = '已复制';
             showCopyToast();
@@ -52,18 +87,71 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.textContent = '复制信息';
             }, 1500);
         }).catch(() => {
-            // Fallback for older browsers
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            showCopyToast();
+            showToast('复制失败，请检查浏览器剪贴板权限');
         });
     }
+
+    function setTaskCopyLoading() {
+        taskCopyCount.disabled = true;
+        taskCopyBtn.disabled = true;
+    }
+
+    function normalizeTaskCopyCount(max) {
+        const parsed = Number.parseInt(taskCopyCount.value, 10);
+        const count = Math.min(Math.max(Number.isFinite(parsed) ? parsed : 10, 1), max);
+        taskCopyCount.value = String(count);
+        return count;
+    }
+
+    function updateTaskCopyControl(cat) {
+        const bookCount = (cat.books || []).length;
+        taskCopyCount.max = String(Math.max(bookCount, 1));
+
+        if (bookCount === 0) {
+            setTaskCopyLoading();
+            return;
+        }
+
+        normalizeTaskCopyCount(bookCount);
+        taskCopyCount.disabled = false;
+        taskCopyBtn.disabled = false;
+        taskCopyBtn.title = `复制“${cat.name}”前 N 本原文链接`;
+    }
+
+    taskCopyCount.addEventListener('change', () => {
+        const max = Number.parseInt(taskCopyCount.max, 10) || 1;
+        normalizeTaskCopyCount(max);
+    });
+
+    taskCopyBtn.addEventListener('click', () => {
+        const cat = allData && allData.categories.find(item => item.name === currentCategory);
+        if (!cat || !cat.books || cat.books.length === 0) {
+            showToast('当前分类暂无可复制的书籍');
+            return;
+        }
+
+        const count = normalizeTaskCopyCount(cat.books.length);
+        const selectedBooks = cat.books.slice(0, count);
+        const urls = selectedBooks.map(book => String(book.url || '').trim());
+        const validUrlPattern = /^https:\/\/(?:www\.)?fanqienovel\.com\/page\/\d+(?:[/?#].*)?$/;
+
+        if (urls.some(url => !validUrlPattern.test(url))) {
+            showToast(`“${cat.name}”前 ${count} 本中存在无效链接`);
+            return;
+        }
+
+        writeClipboard(urls.join('\n')).then(() => {
+            taskCopyBtn.classList.add('copied');
+            taskCopyBtn.textContent = '已复制';
+            showToast(`已复制“${cat.name}”前 ${count} 本`);
+            setTimeout(() => {
+                taskCopyBtn.classList.remove('copied');
+                taskCopyBtn.textContent = '复制清单';
+            }, 1500);
+        }).catch(() => {
+            showToast('复制失败，请检查浏览器剪贴板权限');
+        });
+    });
 
     // ========== Mobile menu ==========
     let overlay = document.createElement('div');
@@ -192,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
     function loadLatestData() {
+        setTaskCopyLoading();
         return fetch(`${dataRoot}/latest_ranks.json?${cacheBuster}`)
             .then(r => {
                 if (!r.ok) throw new Error('Network error');
@@ -217,6 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadDateData(dateStr) {
+        setTaskCopyLoading();
         // dateStr = "YYYY-MM-DD", file = fanqie_<channel>_new_ranks_YYYYMMDD.json
         const fileDateStr = dateStr.replace(/-/g, '');
         const isLatest = currentDateIndex === availableDates.length - 1;
@@ -354,6 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
         categoryTitle.textContent = categoryName;
         const cat = allData.categories.find(c => c.name === categoryName);
         if (!cat) return;
+        updateTaskCopyControl(cat);
         renderTrend(cat);
         renderBooks(cat);
     }
