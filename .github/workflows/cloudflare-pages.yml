@@ -1,0 +1,53 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  workflow_call:
+    secrets:
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+      CLOUDFLARE_API_TOKEN:
+        required: true
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-pages-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Prepare static site
+        id: site
+        shell: bash
+        run: |
+          set -euo pipefail
+          SITE_DIR="$RUNNER_TEMP/fanqie-rank-tracker-site"
+          mkdir -p "$SITE_DIR"
+          cp index.html book.html trend.html favicon.svg "$SITE_DIR/"
+          cp -R css js data api "$SITE_DIR/"
+          echo "path=$SITE_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy latest main to Cloudflare Pages
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          COMMIT_SHA="$(git rev-parse HEAD)"
+          COMMIT_MESSAGE="$(git log -1 --pretty=%s)"
+          npx --yes wrangler@4.119.0 pages deploy "${{ steps.site.outputs.path }}" \
+            --project-name fanqie-rank-tracker \
+            --branch main \
+            --commit-hash "$COMMIT_SHA" \
+            --commit-message "$COMMIT_MESSAGE"

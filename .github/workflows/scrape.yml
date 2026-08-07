@@ -11,8 +11,9 @@ concurrency:
 
 on:
   schedule:
-    # 每天 UTC 00:00 (北京时间 08:00) 触发
-    - cron: '0 0 * * *'
+    # 避开整点高峰：北京时间 08:17 主任务，12:47 兜底。
+    - cron: '17 0 * * *'
+    - cron: '47 4 * * *'
   workflow_dispatch: # 允许手动在界面上点击 Run workflow
 
 jobs:
@@ -99,3 +100,8 @@ jobs:
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
+
+  deploy-cloudflare:
+    needs: scrape-and-commit
+    uses: ./.github/workflows/cloudflare-pages.yml
+    secrets: inherit

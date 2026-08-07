@@ -111,3 +111,8 @@ jobs:
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
+
+  deploy-cloudflare:
+    needs: force-update
+    uses: ./.github/workflows/cloudflare-pages.yml
+    secrets: inherit

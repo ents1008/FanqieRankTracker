@@ -36,3 +36,8 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  deploy-cloudflare:
+    needs: deploy
+    uses: ./.github/workflows/cloudflare-pages.yml
+    secrets: inherit
