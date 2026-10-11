@@ -36,15 +36,22 @@ jobs:
 
     - name: Check if today's data exists
       id: check_data
-      run: |
         TODAY=$(date -u +"%Y%m%d")
-        FILE="data/male/fanqie_male_new_ranks_${TODAY}.json"
-        if [ -f "$FILE" ]; then
+        STATE="data/male/task_state_${TODAY}.json"
+        COMPLETE=$(python -c "
+import json, os
+if os.path.exists('$STATE'):
+    with open('$STATE') as f:
+        print(len(json.load(f).get('completed', [])) >= 19)
+else:
+    print(False)
+")
+        if [ "$COMPLETE" = "True" ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
-          echo "✅ 今日数据已存在: $FILE，跳过爬取"
+          echo "✅ 今日全量数据已存在且19个分类完整，跳过爬取"
         else
           echo "exists=false" >> $GITHUB_OUTPUT
-          echo "📭 今日数据不存在，将执行爬取"
+          echo "📭 今日数据未抓取或分类不完整，将执行爬取/断点续爬"
         fi
 
     - name: Set up Python

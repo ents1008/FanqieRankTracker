@@ -1,8 +1,15 @@
 import os
+import sys
 import json
 import time
 from datetime import datetime
 from playwright.sync_api import sync_playwright
+
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 START_CODE = 58344  # 0xE3E8
 CHAR_SEQUENCE = [
@@ -130,10 +137,17 @@ def run_scraper(limit=30, sleep_sec=5, channel=None):
                 # 使用 Playwright 模拟真实的人为鼠标定位与点击跳转分类
                 page.locator(f"a[href='{cat_href}']").first.click()
                 time.sleep(2) # 等待 SPA 页面骨架和组件请求的动画渲染完毕
-                page.wait_for_selector('a[href^="/page/"]', timeout=5000)
+                page.wait_for_selector('a[href^="/page/"]', timeout=8000)
             except Exception as e:
-                switched = False
-                print(f"切换分类出错或加载超时 {cat_name}: {e}")
+                print(f"点击切换分类超时或失败 {cat_name}，尝试直接导航: {e}")
+                try:
+                    target_url = f"https://fanqienovel.com{cat_href}" if cat_href.startswith('/') else cat_href
+                    page.goto(target_url, wait_until="load", timeout=15000)
+                    time.sleep(2)
+                    page.wait_for_selector('a[href^="/page/"]', timeout=8000)
+                except Exception as e2:
+                    switched = False
+                    print(f"直接导航依然失败 {cat_name}: {e2}")
 
             if not switched:
                 print(f"⚠️ 跳过未成功切换的类别：{cat_name}，下次运行将继续重试")

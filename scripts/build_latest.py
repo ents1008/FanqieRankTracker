@@ -13,6 +13,12 @@ import sys
 import argparse
 from urllib.parse import quote
 
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 
 CHANNEL_PROFILES = {
     "male": {
