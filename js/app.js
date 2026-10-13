@@ -564,8 +564,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Cover
-            const coverHtml = book.cover
-                ? `<div class="book-cover"><img src="${book.cover}" alt="${escapeAttr(book.title)}" loading="lazy"></div>`
+            let coverUrl = book.cover || '';
+            if (coverUrl.startsWith('//')) {
+                coverUrl = 'https:' + coverUrl;
+            }
+            const coverHtml = coverUrl
+                ? `<div class="book-cover"><img src="${escapeAttr(coverUrl)}" alt="${escapeAttr(book.title)}" loading="lazy" referrerpolicy="no-referrer"></div>`
                 : `<div class="book-cover"><div class="no-cover">暂无封面</div></div>`;
 
             card.innerHTML = `

@@ -82,10 +82,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const chartRecords = compactRecordsByDate(records).filter(item => item.readsValue > 0);
         const maxReads = Math.max(...records.map(item => item.readsValue || 0));
 
+        let coverUrl = book.cover || '';
+        if (coverUrl.startsWith('//')) {
+            coverUrl = 'https:' + coverUrl;
+        }
+
         detail.innerHTML = `
             <section class="book-detail-hero">
                 <div class="detail-cover">
-                    ${book.cover ? `<img src="${book.cover}" alt="${escapeAttr(book.title)}">` : '<div class="no-cover">暂无封面</div>'}
+                    ${coverUrl ? `<img src="${escapeAttr(coverUrl)}" alt="${escapeAttr(book.title)}" referrerpolicy="no-referrer">` : '<div class="no-cover">暂无封面</div>'}
                 </div>
                 <div class="detail-main">
                     <span class="panel-kicker">${escapeHtml(latest.category)} · 第 ${latest.rank} 名</span>

@@ -271,10 +271,12 @@ def run_scraper(limit=30, sleep_sec=5, channel=None):
                 "books": category_books
             })
             
-            # 每完成一个分类就写入 JSON（防止中断丢数据）
+            # 保证 categories 按照页面标准的目录顺序排列
+            cat_order = {c["name"]: idx for idx, c in enumerate(categories)}
+            sorted_cats = sorted(all_categories, key=lambda x: cat_order.get(x["name"], 999))
             snapshot = {
                 "date": datetime.now().strftime('%Y-%m-%d'),
-                "categories": all_categories
+                "categories": sorted_cats
             }
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(snapshot, f, ensure_ascii=False, indent=2)

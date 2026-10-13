@@ -1152,6 +1152,14 @@ def main():
         }
         output["categories"].append(cat_output)
 
+    canonical_male_order = [
+        "西方奇幻", "东方仙侠", "科幻末世", "都市日常", "都市修真", "都市高武",
+        "历史古代", "战神赘婿", "都市种田", "传统玄幻", "历史脑洞", "悬疑脑洞",
+        "都市脑洞", "玄幻脑洞", "悬疑灵异", "抗战谍战", "游戏体育", "动漫衍生", "男频衍生"
+    ]
+    cat_order = {name: idx for idx, name in enumerate(canonical_male_order)}
+    output["categories"].sort(key=lambda x: cat_order.get(x["name"], 999))
+
     # 写入 latest_ranks.json
     out_path = os.path.join(data_dir, "latest_ranks.json")
     with open(out_path, "w", encoding="utf-8") as f:

@@ -36,6 +36,7 @@ jobs:
 
     - name: Check if today's data exists
       id: check_data
+      run: |
         TODAY=$(date -u +"%Y%m%d")
         STATE="data/male/task_state_${TODAY}.json"
         COMPLETE=$(python -c "
