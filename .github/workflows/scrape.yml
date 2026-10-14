@@ -34,27 +34,6 @@ jobs:
     - name: Sync Latest Main
       run: git pull --ff-only origin main
 
-    - name: Check if today's data exists
-      id: check_data
-      run: |
-        TODAY=$(date -u +"%Y%m%d")
-        STATE="data/male/task_state_${TODAY}.json"
-        COMPLETE=$(python -c "
-import json, os
-if os.path.exists('$STATE'):
-    with open('$STATE') as f:
-        print(len(json.load(f).get('completed', [])) >= 19)
-else:
-    print(False)
-")
-        if [ "$COMPLETE" = "True" ]; then
-          echo "exists=true" >> $GITHUB_OUTPUT
-          echo "✅ 今日全量数据已存在且19个分类完整，跳过爬取"
-        else
-          echo "exists=false" >> $GITHUB_OUTPUT
-          echo "📭 今日数据未抓取或分类不完整，将执行爬取/断点续爬"
-        fi
-
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -65,9 +44,22 @@ else:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        if [ "${{ steps.check_data.outputs.exists }}" = "false" ]; then
-          playwright install --with-deps chromium
+
+    - name: Check if today's data exists
+      id: check_data
+      run: |
+        IS_COMPLETE=$(python scripts/check_today_complete.py)
+        if [ "$IS_COMPLETE" = "true" ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "✅ 今日全量数据已存在且19个分类完整，跳过爬取"
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "📭 今日数据未抓取或分类不完整，将执行爬取/断点续爬"
         fi
+
+    - name: Install Playwright Browsers
+      if: steps.check_data.outputs.exists == 'false'
+      run: playwright install --with-deps chromium
 
     - name: Run Scraper
       if: steps.check_data.outputs.exists == 'false'
