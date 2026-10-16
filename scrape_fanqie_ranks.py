@@ -2,7 +2,9 @@ import os
 import sys
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+BEIJING_TZ = timezone(timedelta(hours=8))
 from playwright.sync_api import sync_playwright
 
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
@@ -58,7 +60,7 @@ def run_scraper(limit=30, sleep_sec=5, channel=None):
     channel, profile = get_channel_profile(channel)
     output_dir = os.path.join(BASE_DIR, "data", channel)
     os.makedirs(output_dir, exist_ok=True)
-    date_str = datetime.now().strftime("%Y%m%d")
+    date_str = datetime.now(BEIJING_TZ).strftime("%Y%m%d")
     output_file = os.path.join(
         output_dir, f"fanqie_{channel}_new_ranks_{date_str}.json"
     )
@@ -275,7 +277,7 @@ def run_scraper(limit=30, sleep_sec=5, channel=None):
             cat_order = {c["name"]: idx for idx, c in enumerate(categories)}
             sorted_cats = sorted(all_categories, key=lambda x: cat_order.get(x["name"], 999))
             snapshot = {
-                "date": datetime.now().strftime('%Y-%m-%d'),
+                "date": datetime.now(BEIJING_TZ).strftime('%Y-%m-%d'),
                 "categories": sorted_cats
             }
             with open(output_file, 'w', encoding='utf-8') as f:

@@ -1,10 +1,12 @@
 import os
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+BEIJING_TZ = timezone(timedelta(hours=8))
 
 def is_today_complete():
-    today = datetime.now().strftime("%Y%m%d")
+    today = datetime.now(BEIJING_TZ).strftime("%Y%m%d")
     state_file = os.path.join("data", "male", f"task_state_{today}.json")
     if os.path.exists(state_file):
         try:
